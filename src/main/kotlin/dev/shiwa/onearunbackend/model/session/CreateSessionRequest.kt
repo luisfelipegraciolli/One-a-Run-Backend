@@ -1,0 +1,8 @@
+package dev.shiwa.onearunbackend.model.session
+
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
+
+data class CreateSessionRequest(
+    @field:Min(400) @field:Max(1000) val distanceInMeters: Int
+)
