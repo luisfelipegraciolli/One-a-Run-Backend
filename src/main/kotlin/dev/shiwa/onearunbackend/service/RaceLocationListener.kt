@@ -1,6 +1,7 @@
 package dev.shiwa.onearunbackend.service
 
 import com.hivemq.client.mqtt.mqtt5.message.subscribe.suback.Mqtt5SubAck
+import dev.shiwa.onearunbackend.config.MqttConfig
 import dev.shiwa.onearunbackend.model.session.RaceSession
 import dev.shiwa.onearunbackend.model.session.SessionStatus
 import dev.shiwa.onearunbackend.model.tracking.RaceResult
@@ -23,6 +24,7 @@ import kotlin.time.Clock
 @Component
 class RaceLocationListener(
     private val mqttService: MqttService,
+    private val mqttConfig: MqttConfig,
     private val trackingService: RaceTrackingService,
     private val raceRepository: RaceSessionRepository,
     private val jsonMapper: JsonMapper
@@ -43,6 +45,14 @@ class RaceLocationListener(
                     println("Successfully subscribed to topic: $LOCATION_TOPIC_FILTER")
                 }
             }
+
+    }
+
+    @EventListener(ApplicationReadyEvent::class)
+    fun initSubscriptions() {
+        mqttConfig.addOnConnectedCallback {
+            subscribeToLocations()
+        }
     }
 
     fun handleMessage(topic: String, payload: String) {
@@ -84,8 +94,11 @@ class RaceLocationListener(
             publishResult(session)
         }
         if (session.status == SessionStatus.FINISHED) {
-            trackingService.clearSession(sessionId)
-            sessionLocks.remove(sessionId)
+            // Atrasa a limpeza da memória em 2 minutos para permitir fallbacks HTTP/reconexões tardias
+            CompletableFuture.delayedExecutor(2, TimeUnit.MINUTES).execute {
+                trackingService.clearSession(sessionId)
+                sessionLocks.remove(sessionId)
+            }
 
             CompletableFuture.delayedExecutor(5, TimeUnit.MINUTES).execute {
                 try {
@@ -139,7 +152,8 @@ class RaceLocationListener(
     private fun publishResult(session: RaceSession) {
         mqttService.publish(
             topic = "race/${session.id}/result",
-            payload = jsonMapper.writeValueAsString(buildResult(session))
+            payload = jsonMapper.writeValueAsString(buildResult(session)),
+            retain = true
         )
     }
 

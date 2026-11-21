@@ -15,10 +15,11 @@ class MqttService(
     private val mqttClient: Mqtt5Client,
     @Value("\${mqtt.topic:corrida-app/test/hello}") private val defaultTopic: String = "corrida-app/test/hello"
 ) {
-    fun publish(topic: String = defaultTopic, payload: String = "Hello from the backend!"): CompletableFuture<Mqtt5PublishResult> {
+    fun publish(topic: String = defaultTopic, payload: String = "Hello from the backend!", retain: Boolean = true): CompletableFuture<Mqtt5PublishResult> {
         val publishMessage = Mqtt5Publish.builder()
             .topic(topic)
             .payload(payload.toByteArray(StandardCharsets.UTF_8))
+            .retain(retain)
             .build()
         return mqttClient.toAsync().publish(publishMessage)
     }

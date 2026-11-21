@@ -84,7 +84,7 @@ class RaceTrackingService {
     companion object {
         private const val EARTH_RADIUS_METERS = 6_371_000.0
         const val MIN_SEGMENT_METERS = 2.0
-        const val MAX_ACCURACY_METERS = 30.0
+        const val MAX_ACCURACY_METERS = 55.0
         // ~43 km/h: acima disso consideramos um salto de GPS
         const val MAX_SPEED_METERS_PER_SECOND = 12.0
 

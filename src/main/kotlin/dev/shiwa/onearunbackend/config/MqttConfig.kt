@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 
 @Configuration
 class MqttConfig(
@@ -60,7 +61,7 @@ class MqttConfig(
         }
 
         client.connectWith()
-            .cleanStart(true)
+            .cleanStart(false)
             .send()
             .whenComplete { _, throwable ->
                 if (throwable != null) {
@@ -85,6 +86,16 @@ class MqttConfig(
                 }
             }
     }
+
+    private val onConnectedCallbacks = CopyOnWriteArrayList<() -> Unit>()
+
+    fun addOnConnectedCallback(callback: () -> Unit) {
+        onConnectedCallbacks.add(callback)
+        if (asyncClient?.state?.isConnected == true) {
+            callback()
+        }
+    }
+
 
     @PreDestroy
     fun shutdown() {
