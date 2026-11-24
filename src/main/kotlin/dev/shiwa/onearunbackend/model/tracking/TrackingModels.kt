@@ -13,7 +13,8 @@ data class LocationUpdate(
     // epoch em milissegundos; se ausente, usa o horário do servidor
     val timestamp: Long? = null,
     // precisão horizontal em metros informada pelo GPS do dispositivo
-    val accuracy: Double? = null
+    val accuracy: Double? = null,
+    val speed: Double? = null
 )
 
 /**

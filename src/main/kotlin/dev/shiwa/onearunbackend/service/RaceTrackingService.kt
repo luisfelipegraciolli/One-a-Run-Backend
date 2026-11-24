@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.asin
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -41,7 +42,7 @@ class RaceTrackingService {
         synchronized(track) {
             val timestamp = location.timestamp ?: System.currentTimeMillis()
             val accuracy = location.accuracy
-            if (accuracy != null && accuracy > MAX_ACCURACY_METERS) return track.distanceMeters
+            if (accuracy == null || accuracy > MAX_ACCURACY_METERS) return track.distanceMeters
 
             val lastLat = track.lastLatitude
             val lastLon = track.lastLongitude
@@ -53,8 +54,13 @@ class RaceTrackingService {
             if (timestamp <= track.lastTimestamp) return track.distanceMeters
 
             val segment = haversineMeters(lastLat, lastLon, location.latitude, location.longitude)
-            // Ignora pequenas oscilações do GPS mantendo o ponto de ancoragem
-            if (segment < MIN_SEGMENT_METERS) return track.distanceMeters
+
+            // dead zone proporcional ao erro do fix
+            if (segment < max(MIN_SEGMENT_METERS, accuracy)) return track.distanceMeters
+
+            // parado segundo o Doppler
+            val speed = location.speed
+            if (speed != null && speed < STATIONARY_SPEED_METERS_PER_SECOND) return track.distanceMeters
 
             val seconds = (timestamp - track.lastTimestamp) / 1000.0
             if (segment / seconds > MAX_SPEED_METERS_PER_SECOND) return track.distanceMeters
@@ -83,10 +89,12 @@ class RaceTrackingService {
 
     companion object {
         private const val EARTH_RADIUS_METERS = 6_371_000.0
-        const val MIN_SEGMENT_METERS = 2.0
-        const val MAX_ACCURACY_METERS = 55.0
+        const val MIN_SEGMENT_METERS = 3.0
+        const val MAX_ACCURACY_METERS = 20.0
+        const val STATIONARY_SPEED_METERS_PER_SECOND = 0.8
         // ~43 km/h: acima disso consideramos um salto de GPS
         const val MAX_SPEED_METERS_PER_SECOND = 12.0
+
 
         fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
             val dLat = Math.toRadians(lat2 - lat1)
